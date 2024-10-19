@@ -2,30 +2,19 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use dirs;
-use std::io::{Error, self};
+use std::io::{BufReader, BufRead, Error, self};
+
+mod utils;
+mod pre;
+// mod datatypes;
 
 const LOCAL_DIR: &str = ".vote42.rs/"; // name of local dir
 const SSH_LOCAL_DIR: &str = "ssh/"; // local dir for ssh stuff
-const CONFIG: &str = "config"; // name of config file in local directory
-
-// make a local directory based on name
-fn make_local_dir(home_path: PathBuf, dir_name: String) -> Result<(), Error> {
-    let dir_path = home_path.join(dir_name);
-
-    // check if directory exists
-    if !dir_path.exists() {
-        // create directory
-        match fs::create_dir(&dir_path) {
-            Ok(_) => println!("directory created: {:?}", dir_path),
-            Err(e) => eprintln!("failed to create directory: {}", e),
-        }
-    } else {
-        println!("directory already exists: {:?}", dir_path);
-    }
-    Ok(())
-}
+const CONFIG: &str = "config.json"; // name of config file in local directory
 
 // make local directories
+// takes:
+//   $HOME (PathBuf)
 fn make_local_dirs(home_path: PathBuf) -> Result<(), Error> {
     // local dirs
     let local_dirs = vec![
@@ -35,37 +24,10 @@ fn make_local_dirs(home_path: PathBuf) -> Result<(), Error> {
 
     // make all dirs in vec
     for dir in local_dirs {
-        make_local_dir(home_path.clone(), dir.to_string())?;
+        utils::make_local_dir(home_path.clone(), dir.to_string())?;
     }
+
     Ok(())
-}
-
-// check if file exists
-fn check_file(home_path: PathBuf, file_name: String) -> bool {
-    // file to be checked
-    let file_path = home_path.join(file_name);
-
-    // check if file exists
-    match fs::metadata(&file_path) {
-        Ok(metadata) => {
-            if metadata.is_file() {
-                println!("File exists: {:?}", file_path);
-            } else {
-                println!("Path exists, but it is not a file: {:?}", file_path);
-            }
-
-            return true;
-        }
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                println!("File does not exist: {:?}", file_path);
-            } else {
-                eprintln!("Error checking file: {}", e);
-            }
-
-            return false;
-        }
-    }
 }
 
 // make file in LOCAL_DIR
@@ -85,9 +47,11 @@ fn check_file(home_path: PathBuf, file_name: String) -> bool {
 } */
 
 // make config file if it doesn't exist
+// takes:
+//   local path (PathBuf)
 fn make_config(local_path: PathBuf) -> Result<(), Error> {
     // check if config exists
-    if !check_file(local_path.clone(), CONFIG.to_string()) {
+    if !utils::check_file(local_path.clone(), CONFIG.to_string()) {
         let mut config_file_src = File::open(CONFIG)?; // src config file
 
         // dest config file
@@ -102,11 +66,17 @@ fn make_config(local_path: PathBuf) -> Result<(), Error> {
     Ok(())
 }
 
-// check if ssh key is available
-fn check_ssh_key(local_path: PathBuf) -> String {
-    let ssh_key_dir = local_path.join(SSH_LOCAL_DIR);
+// check if ssh key is available and if it is encrypted or not
+// takes:
+//   path to local directory (~/.vote42.rs/)
+// returns:
+//   path to file (PathBuf)
+//   isEncrypted (bool)
+fn check_ssh_private_key(local_path: PathBuf) -> Option<(PathBuf, bool)> {
+    let ssh_private_key_dir = local_path.join(SSH_LOCAL_DIR); // program's local ssh directory
 
-    match fs::read_dir(ssh_key_dir.clone()) {
+    // check if there are files in ssh dir
+    match fs::read_dir(ssh_private_key_dir.clone()) {
         Ok(entries) => {
             // Count the number of files in the directory
             let file_list: Vec<_> = entries
@@ -116,17 +86,39 @@ fn check_ssh_key(local_path: PathBuf) -> String {
 
             // Check if there is exactly one file
             if file_list.len() == 1 {
-                let file_name = file_list[0].file_name();
-                return file_name.to_string_lossy().into_owned();
+                // get file's name
+                let file_name_bind = file_list[0].file_name();
+                let file_name: &str = file_name_bind.to_str().expect("failed to get SSH key path from file name");
+
+                let file_path: PathBuf = ssh_private_key_dir.join(file_name); // get file's path
+                let file = File::open(file_path.clone()).expect("failed to open file");
+                let mut reader = BufReader::new(file);
+                let mut header = String::new();
+
+                // read forst line of file
+                if reader.read_line(&mut header).expect("failed to read first line of file") > 0 {
+                    // check if ssh key is encrypted or not
+                    if header.contains("ENCRYPTED") {
+                        return Some((file_path, true));
+                    } else if header.contains("PRIVATE KEY") {
+                        return Some((file_path, false));
+                    } else {
+                        eprintln!("file is not a ssh private key");
+                        return None;
+                    }
+                } else {
+                    eprintln!("first line is empty");
+                    return None;
+                }
             } else {
-                println!("there should be exactly on key in {:?}. instead there are {}", ssh_key_dir, file_list.len());
-                println!("make sure there is only one ssh key and that it is the right one");
-                return "".to_string();
+                eprintln!("there should be exactly on key in {:?}. instead there are {}", ssh_private_key_dir, file_list.len());
+                eprintln!("make sure there is only one ssh key and that it is the right one");
+                return None;
             }
         }
         Err(e) => {
-            println!("failed to read the directory '{:?}': {}", ssh_key_dir, e);
-            return "".to_string();
+            eprintln!("failed to read the directory '{:?}': {}", ssh_private_key_dir, e);
+            return None;
         }
     }
 }
@@ -143,15 +135,15 @@ fn main() {
     };
     println!("HOME: {:?}", home_path);
 
+    // get local path (~/vote42.rs/)
     let local_path: PathBuf = home_path.join(LOCAL_DIR);
     println!("LOCAL: {:?}", local_path);
 
     let _ = make_local_dirs(home_path.clone()); // make local directories
     let _ = make_config(local_path.clone()); // make the config file
 
-    // check for (single!) ssh key
-    let ssh_key = check_ssh_key(local_path.clone());
-    if ssh_key == "" {
-        return
-    }
+    // check for (single!) ssh key and get it's path and isEncrypted
+    let ssh_private_key_tuple: (PathBuf, bool) = check_ssh_private_key(local_path.clone()).expect("could not get SSH private key path");
+
+    let _ = pre::get_pre_files(local_path.clone(), ssh_private_key_tuple.clone()); // get files from pre-server
 }

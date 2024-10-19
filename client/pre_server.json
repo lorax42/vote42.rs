@@ -1,0 +1,9 @@
+{
+    "username" : "wahlbuero_name",
+    "host" : "xxx.xxx.xxx.xxx:xx",
+    "vote_template" : "vote_template.json",
+    "pre-pubring" : "pre-pubring.pgp",
+    "post-pubring" : "post-pubring.pgp",
+    "client-secring" : "client-secring.pgp",
+    "client-pubring" : "client-pubring.pgp"
+}

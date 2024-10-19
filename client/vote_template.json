@@ -1,0 +1,40 @@
+{
+    "election_site" : "",
+    "election_admin" : "",
+    "datetime" : "",
+    "parties" : [
+        {
+            "name" : "SPD",
+            "long_name" : "Sozialdemokratische Partei Deutschlands",
+            "candidates" : [
+                "Maxi Musterfrau",
+                "Maxi Musterfrau",
+                "Maxi Musterfrau"
+            ],
+            "color" : [255, 0, 0],
+            "votes" : 0
+        },
+        {
+            "name" : "CDU",
+            "long_name" : "Christlich Demokratische Union",
+            "candidates" : [
+                "Maxi Musterfrau",
+                "Maxi Musterfrau",
+                "Maxi Musterfrau"
+            ],
+            "color" : [0, 0, 0],
+            "votes" : 0
+        },
+        {
+            "name" : "AfD",
+            "long_name" : "Arschlöcher ficken Deutschland",
+            "candidates" : [
+                "Maxi Musterfrau",
+                "Maxi Musterfrau",
+                "Maxi Musterfrau"
+            ],
+            "color" : [50, 100, 150],
+            "votes" : 0
+        }
+    ]
+}
