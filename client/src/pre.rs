@@ -1,10 +1,32 @@
-use std::io::{Read, Write};
+use std::io::{Read, Write, Error};
 use std::path::{Path, PathBuf};
 use ssh2::Session;
 use std::net::TcpStream;
 use rpassword::prompt_password;
 
 use crate::utils;
+
+fn get_file(session: Session, remote_file_path: String, local_file_path: String) -> Result<(), Error> {
+    // create SFTP session
+    let sftp = session.sftp().expect("failed to create SFTP session");
+
+    // open remote file
+    let mut remote_file = sftp
+        .open(Path::new(remote_file_path.clone().as_str()))
+        .expect("failed to open remote file");
+
+    // create local file
+    let mut local_file = std::fs::File::create(local_file_path.clone().as_str())
+        .expect("failed to create local file");
+
+    // read remote file and write it to local file
+    let mut buffer = Vec::new();
+    remote_file.read_to_end(&mut buffer).expect("failed to read remote file");
+    local_file.write_all(&buffer).expect("failed to write to local file");
+
+    println!("file downloaded successfully");
+    Ok(())
+}
 
 // get files from pre-server
 // takes:
@@ -59,22 +81,6 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
         panic!("authentication failed");
     }
 
-    // create SFTP session
-    let sftp = session.sftp().expect("failed to create SFTP session");
-
-    // open remote file
-    let mut remote_file = sftp
-        .open(Path::new(vote_template_remote_path.clone().as_str()))
-        .expect("failed to open remote file");
-
-    // create local file
-    let mut local_file = std::fs::File::create(vote_template_local_path.clone().as_str())
-        .expect("failed to create local file");
-
-    // read remote file and write it to local file
-    let mut buffer = Vec::new();
-    remote_file.read_to_end(&mut buffer).expect("failed to read remote file");
-    local_file.write_all(&buffer).expect("failed to write to local file");
-
-    println!("file downloaded successfully");
+    // get files
+    let _ = get_file(session, vote_template_remote_path, vote_template_local_path);
 }
