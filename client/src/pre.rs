@@ -6,6 +6,11 @@ use rpassword::prompt_password;
 
 use crate::utils;
 
+// download file via ssh from server
+// takes:
+//   ssh session (Session)
+//   remote path to read file from (String)
+//   local path to write file to (String)
 fn get_file(session: Session, remote_file_path: String, local_file_path: String) -> Result<(), Error> {
     // create SFTP session
     let sftp = session.sftp().expect("failed to create SFTP session");
