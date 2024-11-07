@@ -8,12 +8,12 @@ struct Party {
     name: String,
     long_name: String,
     color: (u8, u8, u8),
-    candiates: Vec<String>,
+    candidates: Vec<String>,
     votes: u32,
 }
 
 #[derive(Debug, Deserialize)]
-struct Vote {
+pub struct Vote {
     election_site: String,
     election_admin: String,
     datetime: String,
@@ -21,14 +21,18 @@ struct Vote {
 }
 
 impl Vote {
-    fn create_from_json(json_file_path: String) -> Self {
-        let file = File::open(json_file_path).expect("failed to open file");
-        let reader = BufReader::new(file).expect("failed to create reader");
+    pub fn create_from_json(json_file_path: String) -> Result<Self> {
+        println!("attempting to read JSON template file: {}", json_file_path);
+        let file = File::open(json_file_path)
+            .map_err(|e| format!("failed to open file: {}", e))
+            .unwrap();
 
-        let vote: Vote = serde_json::from_reader(reader).expect("failed to parse json to data type Vote");
+        let reader = BufReader::new(file);
 
-        println!("{}", vote);
+        let vote: Vote = serde_json::from_reader(reader)?;
 
-        vote
+        println!("{:?}", vote);
+
+        Ok(vote)
     }
 }

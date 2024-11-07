@@ -1,4 +1,4 @@
-use std::io::{Read, Write, Error};
+use std::io::{Error, Read, Write};
 use std::path::{Path, PathBuf};
 use ssh2::Session;
 use std::net::TcpStream;
@@ -37,7 +37,9 @@ fn get_file(session: Session, remote_file_path: String, local_file_path: String)
 // takes:
 //   local path (PathBuf)
 //   the ssh key path (PathBuf), ssh key isEncrypted (bool)
-pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)) {
+// returns:
+//   local path to vote template (String)
+pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)) -> Result<String, Error> {
     let pre_server_json_path: &str = "hosts/pre_server.json"; // get path to pre_server.json
 
     // get username, host and ssh private key path
@@ -87,5 +89,7 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
     }
 
     // get files
-    let _ = get_file(session, vote_template_remote_path, vote_template_local_path);
+    get_file(session, vote_template_remote_path, vote_template_local_path.clone())?;
+
+    Ok(vote_template_local_path)
 }
