@@ -1,8 +1,11 @@
+use serde_json::{
+    Result,
+    Value
+};
 use std::fs;
 use std::fs::File;
-use std::path::PathBuf;
 use std::io::BufReader;
-use serde_json::{Value, Result};
+use std::path::PathBuf;
 
 // make a local directory based on name
 // takes:
@@ -30,10 +33,7 @@ pub fn make_local_dir(home_path: PathBuf, dir_name: String) -> Result<()> {
 //   name of file (String)
 // returns:
 //   doesExists (bool)
-pub fn check_file(home_path: PathBuf, file_name: String) -> bool {
-    // file to be checked
-    let file_path = home_path.join(file_name);
-
+pub fn check_file(file_path: PathBuf) -> bool {
     // check if file exists
     match fs::metadata(&file_path) {
         Ok(metadata) => {
@@ -64,32 +64,34 @@ pub fn check_file(home_path: PathBuf, file_name: String) -> bool {
 // returns:
 //   the value of the key in the JSON file (String)
 pub fn get_from_json(file_path: PathBuf, key: &str) -> String {
-    let file = File::open(file_path).expect("unable to open file");
+    let file = File::open(file_path).expect("E: unable to open file");
     let reader = BufReader::new(file);
 
     // Deserialize the JSON into a serde_json::Value
-    let json_data: Value = serde_json::from_reader(reader).expect("failed to deserialize JSON");
+    let json_data: Value = serde_json::from_reader(reader).expect("E: failed to deserialize JSON");
 
-    let data_string: String = json_data.get(key).and_then(|v| match v {
-        Value::String(s) => Some(s.clone()),
-        Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                Some(i.to_string())
-            } else if let Some(f) = n.as_f64() {
-                Some(f.to_string())
-            } else {
-                None
+    let data_string: String = json_data
+        .get(key)
+        .and_then(|v| match v {
+            Value::String(s) => Some(s.clone()),
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    Some(i.to_string())
+                } else if let Some(f) = n.as_f64() {
+                    Some(f.to_string())
+                } else {
+                    None
+                }
             }
-        }
-        Value::Bool(b) => Some(b.to_string()),
-        Value::Array(arr) => Some(format!("{:?}", arr)),
-        Value::Object(obj) => Some(format!("{:?}", obj)),
-        Value::Null => {
-            panic!("field {} not found", key);
-            // None
-        }
-    }).unwrap();
+            Value::Bool(b) => Some(b.to_string()),
+            Value::Array(arr) => Some(format!("{:?}", arr)),
+            Value::Object(obj) => Some(format!("{:?}", obj)),
+            Value::Null => {
+                panic!("E: field {} not found", key);
+                // None
+            }
+        })
+        .unwrap();
 
     data_string
 }
-
