@@ -1,5 +1,12 @@
-use std::io::{Error, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{
+    Error,
+    Read,
+    Write
+};
+use std::path::{
+    Path,
+    PathBuf
+};
 use ssh2::Session;
 use std::net::TcpStream;
 use rpassword::prompt_password;
@@ -13,21 +20,21 @@ use crate::utils;
 //   local path to write file to (String)
 fn get_file(session: Session, remote_file_path: String, local_file_path: String) -> Result<(), Error> {
     // create SFTP session
-    let sftp = session.sftp().expect("failed to create SFTP session");
+    let sftp = session.sftp().expect("E: failed to create SFTP session");
 
     // open remote file
     let mut remote_file = sftp
         .open(Path::new(remote_file_path.clone().as_str()))
-        .expect("failed to open remote file");
+        .expect("E: failed to open remote file");
 
     // create local file
     let mut local_file = std::fs::File::create(local_file_path.clone().as_str())
-        .expect("failed to create local file");
+        .expect("E: failed to create local file");
 
     // read remote file and write it to local file
     let mut buffer = Vec::new();
-    remote_file.read_to_end(&mut buffer).expect("failed to read remote file");
-    local_file.write_all(&buffer).expect("failed to write to local file");
+    remote_file.read_to_end(&mut buffer).expect("E: failed to read remote file");
+    local_file.write_all(&buffer).expect("E: failed to write to local file");
 
     println!("file downloaded successfully");
     Ok(())
@@ -39,7 +46,7 @@ fn get_file(session: Session, remote_file_path: String, local_file_path: String)
 //   the ssh key path (PathBuf), ssh key isEncrypted (bool)
 // returns:
 //   local path to vote template (String)
-pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)) -> Result<String, Error> {
+pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)) -> Result<PathBuf, Error> {
     let pre_server_json_path: &str = "hosts/pre_server.json"; // get path to pre_server.json
 
     // get username, host and ssh private key path
@@ -59,12 +66,12 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
     println!("vote_template_local_path: {}", vote_template_local_path);
 
     // create TCP connection to server
-    let tcp = TcpStream::connect(host).expect("failed to connect to sever");
+    let tcp = TcpStream::connect(host).expect("E: failed to connect to sever");
     
     // create a new ssh session
-    let mut session = Session::new().expect("failed to create SSH session");
+    let mut session = Session::new().expect("E: failed to create SSH session");
     session.set_tcp_stream(tcp);
-    session.handshake().expect("failed to handshake");
+    session.handshake().expect("E: failed to handshake");
 
     // check if key is password encrypted
     if ssh_private_key_tuple.1 {
@@ -75,21 +82,24 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
         // authenticate with server using key and password
         session
             .userauth_pubkey_file(username.as_str(), None, Path::new(&ssh_private_key_path), Some(ssh_private_key_password.clone().as_str()))
-            .expect("authentication with password failed");
+            .expect("E: authentication with password failed");
     } else {
         // authenticate with server using key without password
         session
             .userauth_pubkey_file(username.as_str(), None, Path::new(&ssh_private_key_path), None)
-            .expect("authentication without password failed");
+            .expect("E: authentication without password failed");
     }
 
     // check for successful authentication
     if !session.authenticated() {
-        panic!("authentication failed");
+        panic!("E: authentication failed");
     }
 
     // get files
     get_file(session, vote_template_remote_path, vote_template_local_path.clone())?;
+
+    // make PathBuf from String
+    let vote_template_local_path: PathBuf = PathBuf::from(vote_template_local_path);
 
     Ok(vote_template_local_path)
 }
