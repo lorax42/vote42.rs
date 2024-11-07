@@ -1,15 +1,8 @@
-use std::io::{
-    Error,
-    Read,
-    Write
-};
-use std::path::{
-    Path,
-    PathBuf
-};
-use ssh2::Session;
-use std::net::TcpStream;
 use rpassword::prompt_password;
+use ssh2::Session;
+use std::io::{Error, Read, Write};
+use std::net::TcpStream;
+use std::path::{Path, PathBuf};
 
 use crate::utils;
 
@@ -18,7 +11,11 @@ use crate::utils;
 //   ssh session (Session)
 //   remote path to read file from (String)
 //   local path to write file to (String)
-fn get_file(session: Session, remote_file_path: String, local_file_path: String) -> Result<(), Error> {
+fn get_file(
+    session: Session,
+    remote_file_path: String,
+    local_file_path: String,
+) -> Result<(), Error> {
     // create SFTP session
     let sftp = session.sftp().expect("E: failed to create SFTP session");
 
@@ -33,8 +30,12 @@ fn get_file(session: Session, remote_file_path: String, local_file_path: String)
 
     // read remote file and write it to local file
     let mut buffer = Vec::new();
-    remote_file.read_to_end(&mut buffer).expect("E: failed to read remote file");
-    local_file.write_all(&buffer).expect("E: failed to write to local file");
+    remote_file
+        .read_to_end(&mut buffer)
+        .expect("E: failed to read remote file");
+    local_file
+        .write_all(&buffer)
+        .expect("E: failed to write to local file");
 
     println!("file downloaded successfully");
     Ok(())
@@ -46,7 +47,10 @@ fn get_file(session: Session, remote_file_path: String, local_file_path: String)
 //   the ssh key path (PathBuf), ssh key isEncrypted (bool)
 // returns:
 //   local path to vote template (String)
-pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)) -> Result<PathBuf, Error> {
+pub fn get_pre_files(
+    local_path: PathBuf,
+    ssh_private_key_tuple: (PathBuf, bool),
+) -> Result<PathBuf, Error> {
     let pre_server_json_path: &str = "hosts/pre_server.json"; // get path to pre_server.json
 
     // get username, host and ssh private key path
@@ -58,16 +62,18 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
     let ssh_private_key_path = ssh_private_key_tuple.0;
 
     // get remote path to vote template
-    let vote_template_name: String = utils::get_from_json(local_path.join(pre_server_json_path), "vote_template");
+    let vote_template_name: String =
+        utils::get_from_json(local_path.join(pre_server_json_path), "vote_template");
     println!("vote_template_name: {}", vote_template_name);
     let vote_template_remote_path: String = host_local_path + "srv/" + &vote_template_name;
     println!("vote_template_remote_path: {}", vote_template_remote_path);
-    let vote_template_local_path: String = local_path.to_string_lossy().to_string() + &vote_template_name;
+    let vote_template_local_path: String =
+        local_path.to_string_lossy().to_string() + &vote_template_name;
     println!("vote_template_local_path: {}", vote_template_local_path);
 
     // create TCP connection to server
     let tcp = TcpStream::connect(host).expect("E: failed to connect to sever");
-    
+
     // create a new ssh session
     let mut session = Session::new().expect("E: failed to create SSH session");
     session.set_tcp_stream(tcp);
@@ -81,12 +87,22 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
 
         // authenticate with server using key and password
         session
-            .userauth_pubkey_file(username.as_str(), None, Path::new(&ssh_private_key_path), Some(ssh_private_key_password.clone().as_str()))
+            .userauth_pubkey_file(
+                username.as_str(),
+                None,
+                Path::new(&ssh_private_key_path),
+                Some(ssh_private_key_password.clone().as_str()),
+            )
             .expect("E: authentication with password failed");
     } else {
         // authenticate with server using key without password
         session
-            .userauth_pubkey_file(username.as_str(), None, Path::new(&ssh_private_key_path), None)
+            .userauth_pubkey_file(
+                username.as_str(),
+                None,
+                Path::new(&ssh_private_key_path),
+                None,
+            )
             .expect("E: authentication without password failed");
     }
 
@@ -96,7 +112,11 @@ pub fn get_pre_files(local_path: PathBuf, ssh_private_key_tuple: (PathBuf, bool)
     }
 
     // get files
-    get_file(session, vote_template_remote_path, vote_template_local_path.clone())?;
+    get_file(
+        session,
+        vote_template_remote_path,
+        vote_template_local_path.clone(),
+    )?;
 
     // make PathBuf from String
     let vote_template_local_path: PathBuf = PathBuf::from(vote_template_local_path);

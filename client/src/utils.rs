@@ -1,7 +1,4 @@
-use serde_json::{
-    Result,
-    Value
-};
+use serde_json::{Result, Value};
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;

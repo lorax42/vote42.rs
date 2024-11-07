@@ -7,6 +7,11 @@ use std::io::{
     Error
 };
 use std::path::PathBuf;
+// use chrono::{
+//     DateTime,
+//     Local,
+//     TimeZone
+// };
 
 mod datatypes;
 mod pre;
@@ -206,11 +211,10 @@ fn main() {
 
     // SSH KEY
     // check for (single!) ssh key and get it's path and isEncrypted
-    // let ssh_private_key_tuple: (PathBuf, bool) = check_ssh_private_key(local_path.clone()).expect("could not get SSH private key path");
     let ssh_private_key_tuple: (PathBuf, bool) = match check_ssh_private_key(local_path.clone()) {
         Some(t) => t,
         None => {
-            eprintln!("E: failed to get ssh private key tuple");
+            eprintln!("E: failed to get SSH private key tuple");
             return;
         }
     };
@@ -237,11 +241,9 @@ fn main() {
             return;
         }
     };
-    println!("{:?}", vote);
+
+    // vote.datetime = Local::now()
 
     vote.election_site = config.election_site;
     vote.election_admin = config.election_admin;
-
-    println!("election_site: {}", vote.election_site);
-    println!("election_admin: {}", vote.election_admin);
 }
