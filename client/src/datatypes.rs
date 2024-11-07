@@ -11,8 +11,16 @@ pub struct Config {
 }
 
 impl Config {
+    // popoulate Config struct from JSON file
+    // takes:
+    //   path to JSON file (PathBuf)
+    // returns:
+    //   config Struct (Config)
     pub fn create_from_json(json_file_path: PathBuf) -> Result<Self> {
-        println!("attempting to read JSON template file: {:?}", json_file_path);
+        println!(
+            "attempting to read JSON template file: {:?}",
+            json_file_path
+        );
         let file = File::open(json_file_path)
             .map_err(|e| format!("E: failed to open config file: {}", e))
             .unwrap();
@@ -20,8 +28,6 @@ impl Config {
         let reader = BufReader::new(file);
 
         let config: Config = serde_json::from_reader(reader)?;
-
-        println!("{:?}", config);
 
         Ok(config)
     }
@@ -45,8 +51,16 @@ pub struct Vote {
 }
 
 impl Vote {
+    // popoulate Vote struct from JSON file
+    // takes:
+    //   path to JSON file (PathBuf)
+    // returns:
+    //   vote Struct (Vote)
     pub fn create_from_json(json_file_path: PathBuf) -> Result<Self> {
-        println!("attempting to read JSON template file: {:?}", json_file_path);
+        println!(
+            "attempting to read JSON template file: {:?}",
+            json_file_path
+        );
         let file = File::open(json_file_path)
             .map_err(|e| format!("E: failed to open vote template file: {}", e))
             .unwrap();
@@ -54,8 +68,6 @@ impl Vote {
         let reader = BufReader::new(file);
 
         let vote: Vote = serde_json::from_reader(reader)?;
-
-        println!("{:?}", vote);
 
         Ok(vote)
     }
