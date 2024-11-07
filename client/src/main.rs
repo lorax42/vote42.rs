@@ -1,12 +1,16 @@
+use dirs;
 use std::fs;
 use std::fs::File;
+use std::io::{
+    self, BufRead,
+    BufReader,
+    Error
+};
 use std::path::PathBuf;
-use dirs;
-use std::io::{BufReader, BufRead, Error, self};
 
-mod utils;
-mod pre;
 mod datatypes;
+mod pre;
+mod utils;
 
 const LOCAL_DIR: &str = ".vote42.rs/"; // name of local dir
 const SSH_LOCAL_DIR: &str = "ssh/"; // local dir for ssh stuff
@@ -17,10 +21,7 @@ const CONFIG: &str = "config.json"; // name of config file in local directory
 //   $HOME (PathBuf)
 fn make_local_dirs(home_path: PathBuf) -> Result<(), Error> {
     // local dirs
-    let local_dirs = vec![
-        LOCAL_DIR.to_string(),
-        LOCAL_DIR.to_string() + SSH_LOCAL_DIR,
-    ];
+    let local_dirs = vec![LOCAL_DIR.to_string(), LOCAL_DIR.to_string() + SSH_LOCAL_DIR];
 
     // make all dirs in vec
     for dir in local_dirs {
@@ -49,18 +50,21 @@ fn make_local_dirs(home_path: PathBuf) -> Result<(), Error> {
 // make config file if it doesn't exist
 // takes:
 //   local path (PathBuf)
-fn make_config(local_path: PathBuf) -> Result<(), Error> {
+fn make_config(file_path: PathBuf) -> Result<(), Error> {
     // check if config exists
-    if !utils::check_file(local_path.clone(), CONFIG.to_string()) {
+    if ! utils::check_file(file_path.clone()) {
         let mut config_file_src = File::open(CONFIG)?; // src config file
 
         // dest config file
-        let mut config_file_dest = File::create(local_path.join(CONFIG))?;
+        let mut config_file_dest = File::create(file_path)?;
 
         // copy src file to dest file
         io::copy(&mut config_file_src, &mut config_file_dest)?;
 
-        println!("file copied successfully: {:?} to {:?}", config_file_src, config_file_dest);
+        println!(
+            "file copied successfully: {:?} to {:?}",
+            config_file_src, config_file_dest
+        );
     }
 
     Ok(())
@@ -97,8 +101,8 @@ fn check_ssh_private_key(local_path: PathBuf) -> Option<(PathBuf, bool)> {
                 };
 
                 let file_path: PathBuf = ssh_private_key_dir.join(file_name); // get file's path
-                // let file = File::open(file_path.clone()).expect("failed to open file");
-                let file = match File::open(file_path.clone()){
+                                                                              // let file = File::open(file_path.clone()).expect("failed to open file");
+                let file = match File::open(file_path.clone()) {
                     Ok(f) => f,
                     Err(e) => {
                         eprintln!("failed to open file: {}", e);
@@ -132,26 +136,34 @@ fn check_ssh_private_key(local_path: PathBuf) -> Option<(PathBuf, bool)> {
                     return None;
                 }
             } else {
-                eprintln!("E: there should be exactly on key in {:?}. instead there are {}", ssh_private_key_dir, file_list.len());
+                eprintln!(
+                    "E: there should be exactly on key in {:?}. instead there are {}",
+                    ssh_private_key_dir,
+                    file_list.len()
+                );
                 eprintln!("E: make sure there is only one ssh key and that it is the right one");
                 return None;
             }
         }
         Err(e) => {
-            eprintln!("E: failed to read the directory '{:?}': {}", ssh_private_key_dir, e);
+            eprintln!(
+                "E: failed to read the directory '{:?}': {}",
+                ssh_private_key_dir, e
+            );
             return None;
         }
     }
 }
 
-// driver
+// DRIVER
 fn main() {
-    // get home directory
+    // LOCAL
+    // get home directory (~/)
     let home_path: PathBuf = match dirs::home_dir() {
         Some(path) => path,
         None => {
             eprintln!("E: could not find the home directory");
-            return
+            return;
         }
     };
     println!("HOME: {:?}", home_path);
@@ -160,53 +172,76 @@ fn main() {
     let local_path: PathBuf = home_path.join(LOCAL_DIR);
     println!("LOCAL: {:?}", local_path);
 
+    // get config path (~/.vote42.rs/config.json)
+    let config_path: PathBuf = local_path.join(CONFIG);
+    println!("CONFIG: {:?}", config_path);
+
     // make local directories
     match make_local_dirs(home_path.clone()) {
         Ok(_) => println!("local dirs made"),
         Err(e) => {
             eprintln!("E: failed to make local dirs: {}", e);
-            return
+            return;
         }
     };
 
+    // CONFIG
     // make the config file
-    match make_config(local_path.clone()) {
+    match make_config(config_path.clone()) {
         Ok(_) => println!("config file has been made"),
         Err(e) => {
-            eprintln!("failed to make config: {}", e);
-            return
+            eprintln!("E: failed to make config: {}", e);
+            return;
         }
     };
 
+    // get Config from JSON
+    let config: datatypes::Config = match datatypes::Config::create_from_json(config_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("E: failed to parse JSON to Config struct: {}", e);
+            return;
+        }
+    };
+
+    // SSH KEY
     // check for (single!) ssh key and get it's path and isEncrypted
     // let ssh_private_key_tuple: (PathBuf, bool) = check_ssh_private_key(local_path.clone()).expect("could not get SSH private key path");
     let ssh_private_key_tuple: (PathBuf, bool) = match check_ssh_private_key(local_path.clone()) {
         Some(t) => t,
         None => {
-            eprintln!("failed to get ssh private key tuple");
-            return
+            eprintln!("E: failed to get ssh private key tuple");
+            return;
         }
     };
 
+    // PRE SERVER
     // get files from pre-server
-    let vote_template_local_path: String = String::from("/home/lorax/.vote42.rs/vote_template.json"); // DEBUG
+    let vote_template_local_path: PathBuf = PathBuf::from("/home/lorax/.vote42.rs/vote_template.json"); // DEBUG
     /* let vote_template_local_path: String = match pre::get_pre_files(local_path.clone(), ssh_private_key_tuple.clone()) {
         Ok(s) => {
             println!("pre files have been received");
             s
         },
         Err(e) => {
-            eprintln!("failed to get pre files: {}", e);
+            eprintln!("E: failed to get pre files: {}", e);
             return
         }
     }; */
 
-    let vote: datatypes::Vote = match datatypes::Vote::create_from_json(vote_template_local_path) {
+    // VOTE
+    let mut vote: datatypes::Vote = match datatypes::Vote::create_from_json(vote_template_local_path) {
         Ok(v) => v,
         Err(e) => {
-            println!("failed to parse JSON to Vote struct: {}", e);
+            eprintln!("E: failed to parse JSON to Vote struct: {}", e);
             return;
         }
     };
     println!("{:?}", vote);
+
+    vote.election_site = config.election_site;
+    vote.election_admin = config.election_admin;
+
+    println!("election_site: {}", vote.election_site);
+    println!("election_admin: {}", vote.election_admin);
 }
