@@ -7,15 +7,11 @@ use std::io::{
     Error
 };
 use std::path::PathBuf;
-// use chrono::{
-//     DateTime,
-//     Local,
-//     TimeZone
-// };
 
 mod datatypes;
 mod pre;
 mod utils;
+mod vote;
 
 const LOCAL_DIR: &str = ".vote42.rs/"; // name of local dir
 const SSH_LOCAL_DIR: &str = "ssh/"; // local dir for ssh stuff
@@ -242,8 +238,19 @@ fn main() {
         }
     };
 
-    // vote.datetime = Local::now()
+    // set meta data
+    vote.set_election_site(config.get_election_site());
+    vote.set_election_admin(config.get_election_admin());
 
-    vote.election_site = config.election_site;
-    vote.election_admin = config.election_admin;
+    match vote::set_votes(&mut vote) {
+        Ok(_) => println!("votes successfully set"),
+        Err(e) => {
+            eprintln!("E: trouble getting votes: {}", e);
+            return;
+        }
+    };
+
+    // add time at end, before write to file
+    vote.set_datetime();
+    println!("{:?}", vote);
 }
