@@ -53,10 +53,19 @@ impl Config {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Color (u8, u8, u8);
+
+impl Clone for Color {
+    fn clone(&self) -> Self {
+        Color (self.0.clone(), self.1.clone(), self.2.clone())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Party {
     name: String,
     long_name: String,
-    color: (u8, u8, u8),
+    color: Color,
     candidates: Vec<String>,
     votes: u32,
 }
@@ -104,8 +113,8 @@ impl Party {
     // takes:
     //   party (Party)
     // returns:
-    //   party color ((u8, u8, u8))
-    pub fn get_color(&self) -> (u8, u8, u8) {
+    //   party color (Color)
+    pub fn get_color(&self) -> Color {
         self.color.clone()
     }
 
