@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{
     self, BufRead,
     BufReader,
+    stdin,
     Error
 };
 use std::path::PathBuf;
@@ -13,16 +14,25 @@ mod pre;
 mod utils;
 mod vote;
 
-const LOCAL_DIR: &str = ".vote42.rs/"; // name of local dir
-const SSH_LOCAL_DIR: &str = "ssh/"; // local dir for ssh stuff
-const CONFIG: &str = "config.json"; // name of config file in local directory
+const LOCAL_DIR: &str = ".vote42.rs/";        // name of local dir
+const SSH_LOCAL_DIR: &str = "ssh/";           // local dir for ssh stuff
+const CONFIG: &str = "config.json";           // name of config file in local directory
+const HOST_DIR: &str = "hosts/";              // name of dir holding hosts configs
+const PRE_CONFIG: &str = "pre-server.json";   // name of pre-server config file in local directory
+const POST_CONFIG: &str = "post-server.json"; // name of post-server config file in local directory
+const RESULTS_DIR: &str = "results/";         // name of results dir
 
 // make local directories
 // takes:
 //   $HOME (PathBuf)
 fn make_local_dirs(home_path: PathBuf) -> Result<(), Error> {
     // local dirs
-    let local_dirs = vec![LOCAL_DIR.to_string(), LOCAL_DIR.to_string() + SSH_LOCAL_DIR];
+    let local_dirs: Vec<String> = vec![
+        LOCAL_DIR.to_string(),
+        LOCAL_DIR.to_string() + SSH_LOCAL_DIR,
+        LOCAL_DIR.to_string() + HOST_DIR,
+        LOCAL_DIR.to_string() + RESULTS_DIR
+    ];
 
     // make all dirs in vec
     for dir in local_dirs {
@@ -177,6 +187,10 @@ fn main() {
     let config_path: PathBuf = local_path.join(CONFIG);
     println!("CONFIG: {:?}", config_path);
 
+    // get pre server config path (~/.vote42.rs/hosts/pre_server.json)
+    let pre_server_config_path: PathBuf = local_path.join(HOST_DIR).join(PRE_CONFIG);
+    println!("PRE_CONFIG: {:?}", pre_server_config_path);
+
     // make local directories
     match make_local_dirs(home_path.clone()) {
         Ok(_) => println!("local dirs made"),
@@ -189,9 +203,32 @@ fn main() {
     // CONFIG
     // make the config file
     match make_config(config_path.clone()) {
-        Ok(_) => println!("config file has been made"),
+        Ok(_) => {
+            println!("config file has been made");
+            println!("MAKE ANY NECESSARY CHANGES TO {:?}", config_path);
+            println!("enter something to continue");
+
+            let mut cont = String::new();
+            stdin().read_line(&mut cont).expect("E: failed to read line");
+        },
         Err(e) => {
             eprintln!("E: failed to make config: {}", e);
+            return;
+        }
+    };
+
+    // make the pre-server config file
+    match make_config(pre_server_config_path.clone()) {
+        Ok(_) => {
+            println!("pre-server config file has been made");
+            println!("MAKE ANY NECESSARY CHANGES TO {:?}", pre_server_config_path);
+            println!("enter something to continue");
+
+            let mut cont = String::new();
+            stdin().read_line(&mut cont).expect("E: failed to read line");
+        },
+        Err(e) => {
+            eprintln!("E: failed to make pre-server config: {}", e);
             return;
         }
     };
@@ -218,7 +255,7 @@ fn main() {
     // PRE SERVER
     // get files from pre-server
     let vote_template_local_path: PathBuf = PathBuf::from("/home/lorax/.vote42.rs/vote_template.json"); // DEBUG
-    /* let vote_template_local_path: String = match pre::get_pre_files(local_path.clone(), ssh_private_key_tuple.clone()) {
+    /* let vote_template_local_path: PathBuf = match pre::get_pre_files(local_path.clone(), ssh_private_key_tuple.clone()) {
         Ok(s) => {
             println!("pre files have been received");
             s
@@ -253,4 +290,19 @@ fn main() {
     // add time at end, before write to file
     vote.set_datetime();
     println!("{:?}", vote);
+
+    // WRITE FILE
+    let vote_file_path: String = String::from(config.get_election_site());
+    let vote_file_path: PathBuf = local_path.join(RESULTS_DIR).join(vote_file_path);
+
+    match vote.write_to_json(vote_file_path.clone()) {
+        Ok(_) => println!("write successfull"),
+        Err(e) => {
+            eprintln!("E: failed to write vote to JSON file: {}", e);
+            return
+        }
+    };
+
+    // POST SERVER
+    // ...
 }

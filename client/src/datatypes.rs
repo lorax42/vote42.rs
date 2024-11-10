@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use serde_json::Result;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 use std::path::PathBuf;
 use chrono::Local;
 
@@ -52,7 +52,7 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Party {
     name: String,
     long_name: String,
@@ -128,7 +128,7 @@ impl Party {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Vote {
     election_site: String,
     election_admin: String,
@@ -167,6 +167,32 @@ impl Vote {
         let vote: Vote = serde_json::from_reader(reader)?;
 
         Ok(vote)
+    }
+
+    // write to JSON file
+    // takes:
+    //   path to JSON file
+    pub fn write_to_json(&self, mut json_file_path: PathBuf) -> Result<()> {
+
+        if json_file_path.extension().is_none() {
+            json_file_path.set_extension("json");
+        }
+
+        println!(
+            "attempting to write Vote to JSON file: {:?}",
+            json_file_path
+        );
+        let mut file = File::create(json_file_path)
+            .map_err(|e| format!("E: failed to create vote file: {}", e))
+            .unwrap();
+
+        let json_string = serde_json::to_string_pretty(&self).unwrap();
+
+        file.write_all(json_string.as_bytes())
+            .map_err(|e| format!("E: failed to write JSON data to file: {}", e))
+            .unwrap();
+
+        Ok(())
     }
     
     // get vote election site name
