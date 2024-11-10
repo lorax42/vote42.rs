@@ -18,8 +18,8 @@ const LOCAL_DIR: &str = ".vote42.rs/";        // name of local dir
 const SSH_LOCAL_DIR: &str = "ssh/";           // local dir for ssh stuff
 const CONFIG: &str = "config.json";           // name of config file in local directory
 const HOST_DIR: &str = "hosts/";              // name of dir holding hosts configs
-const PRE_CONFIG: &str = "pre-server.json";   // name of pre-server config file in local directory
-const POST_CONFIG: &str = "post-server.json"; // name of post-server config file in local directory
+const PRE_CONFIG: &str = "pre_server.json";   // name of pre-server config file in local directory
+const POST_CONFIG: &str = "post_server.json"; // name of post-server config file in local directory
 const RESULTS_DIR: &str = "results/";         // name of results dir
 
 // make local directories
@@ -61,20 +61,20 @@ fn make_local_dirs(home_path: PathBuf) -> Result<(), Error> {
 // make config file if it doesn't exist
 // takes:
 //   local path (PathBuf)
-fn make_config(file_path: PathBuf) -> Result<(), Error> {
+fn make_config(src_file_path: PathBuf, dest_file_path: PathBuf) -> Result<(), Error> {
     // check if config exists
-    if ! utils::check_file(file_path.clone()) {
-        let mut config_file_src = File::open(CONFIG)?; // src config file
+    if ! utils::check_file(src_file_path.clone()) {
+        let mut config_file_src = File::open(src_file_path.clone())?; // src config file
 
         // dest config file
-        let mut config_file_dest = File::create(file_path)?;
+        let mut config_file_dest = File::create(dest_file_path.clone())?;
 
         // copy src file to dest file
         io::copy(&mut config_file_src, &mut config_file_dest)?;
 
         println!(
             "file copied successfully: {:?} to {:?}",
-            config_file_src, config_file_dest
+            src_file_path, dest_file_path
         );
     }
 
@@ -202,9 +202,8 @@ fn main() {
 
     // CONFIG
     // make the config file
-    match make_config(config_path.clone()) {
+    match make_config(PathBuf::from(CONFIG), config_path.clone()) {
         Ok(_) => {
-            println!("config file has been made");
             println!("MAKE ANY NECESSARY CHANGES TO {:?}", config_path);
             println!("enter something to continue");
 
@@ -218,9 +217,8 @@ fn main() {
     };
 
     // make the pre-server config file
-    match make_config(pre_server_config_path.clone()) {
+    match make_config(PathBuf::from(PRE_CONFIG), pre_server_config_path.clone()) {
         Ok(_) => {
-            println!("pre-server config file has been made");
             println!("MAKE ANY NECESSARY CHANGES TO {:?}", pre_server_config_path);
             println!("enter something to continue");
 
